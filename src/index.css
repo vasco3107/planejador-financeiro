@@ -1,0 +1,157 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f6;
+  --border: #e3e8ee;
+  --border-strong: #cfd7e1;
+  --text: #0b1220;
+  --text-2: #475467;
+  --text-3: #8a94a6;
+  --brand: #0f766e;
+  --brand-hover: #0b5f59;
+  --brand-soft: #e6f4f2;
+  --ring: rgb(15 118 110 / 0.35);
+  --sh-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.04);
+  --sh-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
+  --grid: #e8edf2;
+  --c-receita: #10b981;
+  --c-despesa: #be123c;
+  --c-lucro: #3b82f6;
+  --c-investimento: #6d28d9;
+  --c-reserva: #f59e0b;
+  --c-saldo: #0f766e;
+  --c-retirada: #db2777;
+  --c-pessoal: #0891b2;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #070b14;
+  --surface: #0e1420;
+  --surface-2: #121a28;
+  --surface-3: #172133;
+  --border: #1d2738;
+  --border-strong: #2a3649;
+  --text: #eef2f7;
+  --text-2: #a6b0c0;
+  --text-3: #6b778a;
+  --brand: #2dd4bf;
+  --brand-hover: #5eead4;
+  --brand-soft: rgb(45 212 191 / 0.1);
+  --ring: rgb(45 212 191 / 0.35);
+  --sh-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --sh-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  --grid: #1a2333;
+  --c-receita: #059669;
+  --c-despesa: #f43f5e;
+  --c-lucro: #4f93f7;
+  --c-investimento: #7c3aed;
+  --c-reserva: #d97706;
+  --c-saldo: #2dd4bf;
+  --c-retirada: #db2777;
+  --c-pessoal: #0891b2;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-ink-3: var(--text-3);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-receita: var(--c-receita);
+  --color-despesa: var(--c-despesa);
+  --color-lucro: var(--c-lucro);
+  --color-investimento: var(--c-investimento);
+  --color-reserva: var(--c-reserva);
+  --color-saldo: var(--c-saldo);
+  --color-retirada: var(--c-retirada);
+  --color-pessoal: var(--c-pessoal);
+  --shadow-card: var(--sh-card);
+  --shadow-pop: var(--sh-pop);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  input[type='date']::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Recharts: remove contorno de foco padrão e suaviza */
+.recharts-wrapper *:focus {
+  outline: none;
+}
+.recharts-cartesian-axis-tick-value {
+  font-size: 11px;
+  fill: var(--text-3);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+.animate-fade-in { animation: fade-in 0.25s ease-out both; }
+.animate-pop-in { animation: pop-in 0.18s ease-out both; }
+.animate-sheet-in { animation: sheet-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in, .animate-pop-in, .animate-sheet-in { animation: none; }
+}
+
+@media print {
+  aside, nav, header, .no-print { display: none !important; }
+  body { background: white; }
+}
