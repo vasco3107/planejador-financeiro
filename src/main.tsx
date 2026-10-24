@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { router } from './app/router'
+import { AuthGate } from './features/auth/AuthGate'
 import { applyTheme, useUI } from './store/ui'
 import './index.css'
 
@@ -12,6 +13,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthGate>
+      <RouterProvider router={router} />
+    </AuthGate>
   </StrictMode>,
 )

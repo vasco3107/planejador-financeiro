@@ -10,6 +10,7 @@ import { TransactionFormHost, openTransactionForm } from '@/features/transaction
 import { cn } from '@/lib/cn'
 import { useUI } from '@/store/ui'
 import { EntitySwitcher } from './EntitySwitcher'
+import { SyncBadge } from '@/features/auth/SyncBadge'
 import { Logo } from './Logo'
 import { NAV, type NavItem } from './nav'
 
@@ -102,6 +103,7 @@ function Sidebar() {
           </Fragment>
         ))}
       </nav>
+      {!collapsed && <SyncBadge />}
       <div className={cn('flex items-center border-t border-line p-3', collapsed ? 'flex-col gap-1' : 'justify-between')}>
         <ThemeToggle />
         <Button
@@ -229,6 +231,7 @@ export function AppLayout() {
         <Logo compact />
         <div className="flex items-center gap-2">
           <EntitySwitcher />
+          <SyncBadge compact />
           <ThemeToggle />
         </div>
       </header>
