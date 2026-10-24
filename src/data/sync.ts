@@ -9,20 +9,23 @@ import { WALLET_TABLE, supabase, syncEnabled } from './supabase'
  * a nuvem guarda uma cópia completa. Quem gravou por último vence — o que é
  * adequado para uma pessoa usando computador e celular em momentos diferentes.
  */
-export type SyncState = 'desligado' | 'deslogado' | 'sincronizando' | 'ok' | 'erro'
+export type SyncState = 'desligado' | 'deslogado' | 'sincronizando' | 'ok' | 'erro' | 'conflito'
 
 interface SyncStatus {
   state: SyncState
   lastSync: number | null
   error: string | null
   email: string | null
+  /** Quando os dois lados têm dados diferentes, o que cada um tem */
+  conflito: { aquiLancamentos: number; nuvemLancamentos: number; nuvemEm: number } | null
 }
 
 type Listener = (s: SyncStatus) => void
 
-let status: SyncStatus = { state: syncEnabled ? 'deslogado' : 'desligado', lastSync: null, error: null, email: null }
+let status: SyncStatus = { state: syncEnabled ? 'deslogado' : 'desligado', lastSync: null, error: null, email: null, conflito: null }
 const listeners = new Set<Listener>()
 const LAST_PULL_KEY = 'pf-last-pull'
+const SAFETY_KEY = 'pf-copia-antes-da-nuvem'
 
 function setStatus(patch: Partial<SyncStatus>) {
   status = { ...status, ...patch }
@@ -79,6 +82,12 @@ async function pull(session: Session): Promise<boolean> {
     .maybeSingle()
   if (error) throw new Error(error.message)
   if (!data?.dados || !isBackupFile(data.dados as BackupFile)) return false
+  // Rede de segurança: guarda o que havia aqui antes de substituir
+  try {
+    localStorage.setItem(SAFETY_KEY, JSON.stringify(await exportBackup()))
+  } catch {
+    /* armazenamento cheio: segue sem a cópia */
+  }
   await restoreBackup(data.dados as BackupFile)
   setRemoteStamp(new Date(data.updated_at as string).getTime())
   setStatus({ state: 'ok', lastSync: Date.now(), error: null })
@@ -102,13 +111,63 @@ export async function syncOnLogin(session: Session): Promise<void> {
 
     const remoteAt = data ? new Date(data.updated_at as string).getTime() : 0
     const vazioAqui = await isLocalEmpty()
-    const mudouAqui = (await localStamp()) > remoteStamp()
+    const primeiraVezNesteAparelho = remoteStamp() === 0
 
-    if (!remoteAt) await push(session)
-    else if (vazioAqui || !mudouAqui || remoteAt > remoteStamp()) await pull(session)
-    else await push(session)
+    if (!remoteAt) return void (await push(session))
+    if (vazioAqui) return void (await pull(session))
+
+    if (primeiraVezNesteAparelho) {
+      // Os dois lados têm dados e este aparelho nunca sincronizou: quem decide é o usuário
+      const nuvem = await contarNaNuvem(session)
+      const aqui = await db.transactions.count()
+      if (nuvem !== aqui) {
+        pendente = session
+        setStatus({ state: 'conflito', conflito: { aquiLancamentos: aqui, nuvemLancamentos: nuvem, nuvemEm: remoteAt } })
+        return
+      }
+    }
+
+    if ((await localStamp()) > remoteStamp()) await push(session)
+    else await pull(session)
   } catch (e) {
     setStatus({ state: 'erro', error: e instanceof Error ? e.message : 'Falha ao sincronizar' })
+  }
+}
+
+/** Quantos lançamentos existem na cópia da nuvem. */
+async function contarNaNuvem(session: Session): Promise<number> {
+  if (!supabase) return 0
+  const { data } = await supabase.from(WALLET_TABLE).select('dados').eq('user_id', session.user.id).maybeSingle()
+  const dados = data?.dados as BackupFile | undefined
+  return dados?.data?.transactions?.length ?? 0
+}
+
+/** Sessão esperando a escolha do usuário no conflito. */
+let pendente: Session | null = null
+
+/** Mantém o que está neste aparelho e substitui a nuvem. */
+export async function resolverComDaquiParaNuvem(): Promise<void> {
+  if (!pendente) return
+  const session = pendente
+  pendente = null
+  setStatus({ state: 'sincronizando', conflito: null })
+  try {
+    await push(session)
+  } catch (e) {
+    setStatus({ state: 'erro', error: e instanceof Error ? e.message : 'Falha ao enviar' })
+  }
+}
+
+/** Traz o que está na nuvem e substitui este aparelho. */
+export async function resolverComNuvemParaAqui(): Promise<void> {
+  if (!pendente) return
+  const session = pendente
+  pendente = null
+  setStatus({ state: 'sincronizando', conflito: null })
+  try {
+    await pull(session)
+  } catch (e) {
+    setStatus({ state: 'erro', error: e instanceof Error ? e.message : 'Falha ao baixar' })
   }
 }
 
@@ -157,6 +216,7 @@ export async function pullFromRemote(session: Session): Promise<void> {
 }
 
 export function setLoggedOut() {
-  setStatus({ state: syncEnabled ? 'deslogado' : 'desligado', email: null, lastSync: null, error: null })
+  pendente = null
+  setStatus({ state: syncEnabled ? 'deslogado' : 'desligado', email: null, lastSync: null, error: null, conflito: null })
   localStorage.removeItem(LAST_PULL_KEY)
 }

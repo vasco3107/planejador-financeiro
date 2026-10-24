@@ -7,7 +7,18 @@ import { Field, Input } from '@/components/ui/Form'
 import { toast } from '@/components/ui/Toast'
 import { db } from '@/data/db'
 import { authErrorMessage, supabase, syncEnabled } from '@/data/supabase'
-import { schedulePush, setLoggedOut, syncOnLogin, watchRemote, pullFromRemote } from '@/data/sync'
+import {
+  resolverComDaquiParaNuvem,
+  resolverComNuvemParaAqui,
+  schedulePush,
+  setLoggedOut,
+  syncOnLogin,
+  useSyncStatus,
+  watchRemote,
+  pullFromRemote,
+} from '@/data/sync'
+import { Dialog } from '@/components/ui/Dialog'
+import { formatDateBR } from '@/domain/period'
 import { Logo } from '@/components/layout/Logo'
 
 /** Sessão aberta, para quem precisar saber quem está logado. */
@@ -77,7 +88,66 @@ export function AuthGate({ children }: { children: ReactNode }) {
     )
   }
   if (!session) return <LoginScreen />
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <ConflitoDialog />
+    </>
+  )
+}
+
+/**
+ * Os dois lados têm dados diferentes e este aparelho nunca sincronizou:
+ * o usuário escolhe qual versão fica, em vez de o app adivinhar.
+ */
+function ConflitoDialog() {
+  const { state, conflito } = useSyncStatus()
+  const [ocupado, setOcupado] = useState(false)
+  if (state !== 'conflito' || !conflito) return null
+
+  const escolher = async (fn: () => Promise<void>) => {
+    setOcupado(true)
+    try {
+      await fn()
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={() => {}}
+      title="Qual versão você quer manter?"
+      description="Este aparelho e a nuvem têm dados diferentes. A versão escolhida substitui a outra."
+      footer={
+        <>
+          <Button variant="outline" disabled={ocupado} onClick={() => escolher(resolverComNuvemParaAqui)}>
+            Usar a da nuvem
+          </Button>
+          <Button disabled={ocupado} onClick={() => escolher(resolverComDaquiParaNuvem)}>
+            Usar a deste aparelho
+          </Button>
+        </>
+      }
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-brand/40 bg-brand-soft/40 p-4">
+          <p className="text-xs font-medium text-ink-3">Neste aparelho</p>
+          <p className="mt-1 text-2xl font-semibold num">{conflito.aquiLancamentos}</p>
+          <p className="text-xs text-ink-3">lançamentos</p>
+        </div>
+        <div className="rounded-xl border border-line p-4">
+          <p className="text-xs font-medium text-ink-3">Na nuvem</p>
+          <p className="mt-1 text-2xl font-semibold num">{conflito.nuvemLancamentos}</p>
+          <p className="text-xs text-ink-3">salvos em {formatDateBR(new Date(conflito.nuvemEm).toISOString().slice(0, 10))}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-ink-3">
+        Antes de substituir o que está aqui, o app guarda uma cópia de segurança neste navegador.
+      </p>
+    </Dialog>
+  )
 }
 
 function LoginScreen() {
